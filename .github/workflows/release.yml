@@ -21,10 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Solo `app` (.app.tar.gz): es lo que usa el updater y evita el
-          # bundle_dmg.sh, que es flaky en los runners headless de macOS.
+          # Solo Apple Silicon (aarch64): el Mac de trabajo es M-series, así
+          # evitamos el universal (compila x2) y va ~el doble de rápido.
+          # `--bundles app` (.app.tar.gz): lo que usa el updater; evita el
+          # bundle_dmg.sh, flaky en los runners headless de macOS.
           - platform: macos-latest
-            args: "--target universal-apple-darwin --bundles app"
+            args: "--target aarch64-apple-darwin --bundles app"
           - platform: ubuntu-22.04
             args: ""
     runs-on: ${{ matrix.platform }}
@@ -45,7 +47,7 @@ jobs:
       - name: Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
 
       - name: Cache cargo
         uses: swatinem/rust-cache@v2
