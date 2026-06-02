@@ -1,0 +1,78 @@
+# Compila el cliente de Pausas Activas (código en el repo privado
+# julianr0223/pausas-activas) y publica los instaladores acá, en un repo
+# PÚBLICO, para que el auto-update pueda descargarlos sin autenticación.
+#
+# El código sigue privado: este workflow lo clona con un token de SOLO LECTURA
+# (secret CODE_TOKEN). La versión sale de client/src-tauri/tauri.conf.json.
+#
+# Disparar: Actions → release → Run workflow (o `gh workflow run release.yml
+#   --repo julianr0223/pausas-activas-releases`).
+name: release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout del código privado
+        uses: actions/checkout@v4
+        with:
+          repository: julianr0223/pausas-activas
+          ref: main
+          token: ${{ secrets.CODE_TOKEN }}
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Cache cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+
+      - name: Linux deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev patchelf libsoup-3.0-dev build-essential file
+
+      - name: Frontend deps
+        run: npm ci
+        working-directory: client
+
+      # Publica el release EN ESTE repo público (GITHUB_TOKEN local). El
+      # latest.json queda con URLs públicas → el updater las descarga sin auth.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: client
+          tagName: v__VERSION__
+          releaseName: "Pausas Activas v__VERSION__"
+          releaseBody: "Instaladores: Linux (.deb / AppImage) y macOS (.dmg)."
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
