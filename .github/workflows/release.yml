@@ -32,7 +32,8 @@ jobs:
         with:
           repository: julianr0223/pausas-activas
           ref: main
-          token: ${{ secrets.CODE_TOKEN }}
+          # Deploy key de solo lectura (no expira). Ver README.
+          ssh-key: ${{ secrets.CODE_SSH_KEY }}
 
       - name: Node
         uses: actions/setup-node@v4
