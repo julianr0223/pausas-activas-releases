@@ -21,8 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Solo `app` (.app.tar.gz): es lo que usa el updater y evita el
+          # bundle_dmg.sh, que es flaky en los runners headless de macOS.
           - platform: macos-latest
-            args: "--target universal-apple-darwin"
+            args: "--target universal-apple-darwin --bundles app"
           - platform: ubuntu-22.04
             args: ""
     runs-on: ${{ matrix.platform }}
